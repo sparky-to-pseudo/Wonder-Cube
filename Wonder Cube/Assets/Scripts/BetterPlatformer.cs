@@ -8,6 +8,7 @@ public class BetterPlatformer : MonoBehaviour
     public float moveSpeed = 10f;
     public Vector2 direction;
     private bool facingRight = true;
+    public float iceMultiplier = 15f; 
 
     [Header("Vertical Movement")]
     public float jumpSpeed = 15f;
@@ -18,18 +19,22 @@ public class BetterPlatformer : MonoBehaviour
     public Rigidbody2D rb;
     // public Animator animator;
     public LayerMask groundLayer;
+    public LayerMask iceLayer;
     // public GameObject characterHolder;
 
     [Header("Physics")]
     public float maxSpeed = 7f;
+    public float uphillIceReduction = 6f;
     public float linearDrag = 4f;
     public float gravity = 1;
     public float fallMultiplyer = 5f;
 
     [Header("Collision")]
     public bool onGround = false; // going to use for raycasting (look up concept)
+    public bool onIce = false;
     public float groundLength = 0.52f;
     public Vector3 colliderOffset;
+    public Collision2D collision2D;
 
     // Update is called once per frame
     void Update()
@@ -38,6 +43,9 @@ public class BetterPlatformer : MonoBehaviour
         onGround = Physics2D.Raycast(transform.position + colliderOffset, Vector2.down, groundLength, groundLayer)
             || Physics2D.Raycast(transform.position - colliderOffset, Vector2.down, groundLength, groundLayer);
 
+        onIce = Physics2D.Raycast(transform.position + colliderOffset, Vector2.down, groundLength, iceLayer)
+            || Physics2D.Raycast(transform.position - colliderOffset, Vector2.down, groundLength, iceLayer);
+
         /* 
          * if(!wasOnGround && onGround)
          * {
@@ -45,7 +53,7 @@ public class BetterPlatformer : MonoBehaviour
          * }
          */
 
-        if(Input.GetButtonDown("Jump"))// && onGround)
+        if (Input.GetButtonDown("Jump"))// && onGround)
         {
             //Jump();
             jumpTimer = Time.time + jumpDelay;
@@ -54,13 +62,23 @@ public class BetterPlatformer : MonoBehaviour
         direction = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
     }
 
+    // OnCollisionEnter2D is called when this collider2D/rigidbody2D has begun touching another rigidbody2D/collider2D (2D physics only)
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (collision.transform.name == "Ice")
+        {
+            Debug.Log("Setting collision: " + collision.transform.name);
+            collision2D = collision;
+        }
+    }
+
     // Good to place code in here dealing with physics
     // This function is called every fixed framerate frame, if the MonoBehaviour is enabled
     private void FixedUpdate()
     {
         moveCharacter(direction.x);
 
-        if((jumpTimer > Time.time) && onGround)
+        if((jumpTimer > Time.time) && onGround || (jumpTimer > Time.time) && onIce)
         {
             Jump();
         }
@@ -96,18 +114,62 @@ public class BetterPlatformer : MonoBehaviour
     {
         bool changingDirections = (direction.x > 0 && rb.velocity.x < 0) || (direction.x < 0 && rb.velocity.x > 0);
 
-        if (onGround)
+        if (onGround || onIce)
         {
-            if (Mathf.Abs(direction.x) < 0.4f || changingDirections)
+            if (onGround)
             {
-                rb.drag = linearDrag;
-            }
-            else
-            {
-                rb.drag = 0f;
-            }
+                if (Mathf.Abs(direction.x) < 0.4f || changingDirections)
+                {
+                    rb.drag = linearDrag;
+                }
+                else
+                {
+                    rb.drag = 0f;
+                }
 
-            rb.gravityScale = 0;
+                rb.gravityScale = 0;
+            }
+            else // Ice Physics
+            {
+                
+                rb.gravityScale = 0;
+
+                if(collision2D != null)
+                {
+                    Debug.Log("NOT NULL" + collision2D);
+
+                    if (collision2D.transform.rotation.z < 0)
+                    {
+
+                        if(direction.x < 0)
+                        {
+                            rb.drag = 5f;
+                        }
+                        else
+                        {
+                            rb.drag = 0f;
+                            rb.velocity = new Vector2(10f, rb.velocity.y);
+                        }
+
+                        Debug.Log("rotation is less than 0: " + collision2D.transform.rotation.z);
+                    }
+                    else
+                    {
+
+                        if (direction.x > 0)
+                        {
+                            rb.drag = 5f;
+                        }
+                        else
+                        {
+                            rb.drag = 0f;
+                            rb.velocity = new Vector2(-10f, rb.velocity.y);
+                        }
+
+                        Debug.Log("rotation is greater than 0: " + collision2D.transform.rotation.z);
+                    }
+                }
+            }
         }
         else
         {

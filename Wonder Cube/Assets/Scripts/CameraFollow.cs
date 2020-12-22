@@ -24,7 +24,7 @@ public class CameraFollow : MonoBehaviour
     void FixedUpdate()
     {
         // previously used in void Update()
-        //transform.position = new Vector3(followObject.position.x + offset.x, followObject.position.y + offset.y, offset.z);
+        // transform.position = new Vector3(followObject.position.x + offset.x, followObject.position.y + offset.y, offset.z);
 
         Vector2 follow = followObject.transform.position;
         float xDifference = Vector2.Distance(Vector2.right * transform.position.x, Vector2.right * follow.x);
